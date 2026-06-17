@@ -7,6 +7,45 @@ $configUrl        = $block->getConfigUrl();
 $createSessionUrl = $block->getUrl('etechflow_admin_reindex/license/createsession');
 $plansUrl         = $block->getPlansUrl();
 ?>
+<?php
+/* eTechFlow-lock-notice: show suspended/blocked message instead of purchase plans */
+try {
+    $etfTmpl = method_exists($block, 'getTemplate') ? (string) $block->getTemplate() : '';
+    $etfMod = $etfTmpl ? explode('::', $etfTmpl)[0] : '';
+    $etfLvClass = $etfMod ? (str_replace('_', '\\', $etfMod) . '\\Model\\LicenseValidator') : '';
+    if ($etfLvClass !== '' && class_exists($etfLvClass)) {
+        $etfOm = \Magento\Framework\App\ObjectManager::getInstance();
+        $etfLv = $etfOm->get($etfLvClass);
+        $etfDomain = method_exists($etfLv, 'getCurrentHost') ? (string) $etfLv->getCurrentHost() : '';
+        $etfKey = '';
+        if (defined($etfLvClass . '::XML_PATH_LICENSE_KEY')) {
+            $etfSc = $etfOm->get(\Magento\Framework\App\Config\ScopeConfigInterface::class);
+            $etfKey = trim((string) $etfSc->getValue(constant($etfLvClass . '::XML_PATH_LICENSE_KEY')));
+        }
+        if ($etfDomain !== '') {
+            $etfUrl = 'https://license-service.etechflow.com/license/status?platform=magento&domain='
+                . urlencode($etfDomain) . ($etfKey !== '' ? '&license_key=' . urlencode($etfKey) : '');
+            $etfCurl = $etfOm->create(\Magento\Framework\HTTP\Client\Curl::class);
+            $etfCurl->setTimeout(8);
+            $etfCurl->get($etfUrl);
+            $etfData = json_decode((string) $etfCurl->getBody(), true);
+            $etfState = is_array($etfData) ? ($etfData['state'] ?? '') : '';
+            if ($etfState === 'blocked' || $etfState === 'suspended') {
+                $etfMsg = (is_array($etfData) && !empty($etfData['message'])) ? $etfData['message']
+                    : 'Access to this module has been disabled by the administrator. Please contact support@etechflow.com to restore access.';
+                $etfTitle = $etfState === 'suspended' ? 'Module access suspended' : 'Module access blocked';
+                echo '<div style="max-width:640px;margin:64px auto;padding:36px;border:1px solid #7f1d1d;border-radius:14px;background:#1b0d0d;color:#f3d6d6;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;text-align:center;">'
+                   . '<div style="font-size:46px;line-height:1;">&#9888;</div>'
+                   . '<h2 style="color:#fff;margin:14px 0 8px;font-size:22px;">' . htmlspecialchars($etfTitle) . '</h2>'
+                   . '<p style="font-size:15px;line-height:1.6;margin:0 auto;max-width:520px;">' . htmlspecialchars($etfMsg) . '</p>'
+                   . '<p style="margin-top:20px;font-size:14px;">Contact <a href="mailto:support@etechflow.com" style="color:#ff8a8a;text-decoration:underline;">support@etechflow.com</a> to restore access.</p>'
+                   . '</div>';
+                return;
+            }
+        }
+    }
+} catch (\Throwable $etfE) { /* fail open: render the normal gate */ }
+?>
 <style>
 *{box-sizing:border-box}
 .etf-gate-wrap{display:flex;align-items:flex-start;justify-content:center;min-height:70vh;background:linear-gradient(135deg,#0b1828 0%,#0d1f35 100%);padding:40px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
