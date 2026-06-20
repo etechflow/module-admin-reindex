@@ -1,13 +1,23 @@
 name: Publish to eTechFlow Composer repo
 
-# On a published GitHub Release, bake the module into a versioned dist zip and
-# push it to the private eTechFlow Composer repo (/composer/publish). The tag
-# becomes the version; the release body becomes the changelog. MODULE_DIR is the
-# path (relative to the repo root) of the folder containing composer.json.
+# Bake the module into a versioned dist zip and push it to the private eTechFlow
+# Composer repo (/composer/publish).
+#  * On a published GitHub Release: tag = version, release body = changelog.
+#  * Manual run (workflow_dispatch): supply the version (and optional changelog).
+# MODULE_DIR is the path (relative to repo root) of the folder with composer.json.
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 1.2.2)'
+        required: true
+      changelog:
+        description: 'Release notes (optional)'
+        required: false
+        default: ''
 
 jobs:
   publish:
@@ -15,37 +25,49 @@ jobs:
     env:
       MODULE_DIR: "."
     steps:
-      - name: Checkout release tag
+      - name: Resolve version + ref
+        id: meta
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "release" ]; then
+            V="${{ github.event.release.tag_name }}"; V="${V#v}"
+            REF="${{ github.event.release.tag_name }}"
+          else
+            V="${{ github.event.inputs.version }}"; V="${V#v}"
+            REF="${{ github.ref_name }}"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ steps.meta.outputs.ref }}
 
       - name: Build versioned dist zip
         id: build
         run: |
           set -euo pipefail
-          VERSION="${{ github.event.release.tag_name }}"
-          VERSION="${VERSION#v}"
+          VERSION="${{ steps.meta.outputs.version }}"
           cd "$MODULE_DIR"
           tmp="$(mktemp)"
           jq --arg v "$VERSION" '.version = $v' composer.json > "$tmp" && mv "$tmp" composer.json
           zip -r -q /tmp/module.zip . -x '.git/*' '.github/*'
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "sha=$(sha1sum /tmp/module.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Publish to private Composer repo
         env:
           PORTAL_PUBLISH_TOKEN: ${{ secrets.PORTAL_PUBLISH_TOKEN }}
-          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_BODY: ${{ github.event_name == 'release' && github.event.release.body || github.event.inputs.changelog }}
         run: |
           set -euo pipefail
           printf '%s' "$RELEASE_BODY" > /tmp/changelog.txt
           curl -fsS -X POST "https://license-service.etechflow.com/composer/publish" \
             -H "Authorization: Bearer $PORTAL_PUBLISH_TOKEN" \
             -F "composer_json=<$MODULE_DIR/composer.json" \
-            -F "version=${{ steps.build.outputs.version }}" \
+            -F "version=${{ steps.meta.outputs.version }}" \
             -F "reference=${{ github.sha }}" \
             -F "shasum=${{ steps.build.outputs.sha }}" \
             -F "changelog=</tmp/changelog.txt" \
             -F "package=@/tmp/module.zip"
-          echo "Published ${{ steps.build.outputs.version }} to the eTechFlow Composer repo."
+          echo "Published ${{ steps.meta.outputs.version }} to the eTechFlow Composer repo."
