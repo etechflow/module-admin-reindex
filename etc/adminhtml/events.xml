@@ -1,14 +1,18 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Update notice: when the admin opens the Admin Reindex admin area, surface a
- * bell notification if a newer module version is published to the eTechFlow
- * Composer repo.
+ * Update notice: surface a bell notification when a newer module version is
+ * published to the eTechFlow Composer repo. Fires both on the module's own
+ * route AND on Magento's native Index Management page (where the licensed
+ * module actually lands).
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
     <event name="controller_action_predispatch_etechflow_admin_reindex">
         <observer name="etechflow_admin_reindex_update_notification" instance="ETechFlow\AdminReindex\Observer\AddUpdateNotification"/>
+    </event>
+    <event name="controller_action_predispatch_indexer_indexer_list">
+        <observer name="etechflow_admin_reindex_update_notification_idx" instance="ETechFlow\AdminReindex\Observer\AddUpdateNotification"/>
     </event>
 </config>

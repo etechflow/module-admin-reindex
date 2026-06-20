@@ -8,5 +8,12 @@
                    template="ETechFlow_AdminReindex::reindex_all_button.phtml"
                    acl="ETechFlow_AdminReindex::run"/>
         </referenceContainer>
+        <referenceContainer name="content">
+            <block class="Magento\Backend\Block\Template"
+                   name="etechflow_admin_reindex_update_notice"
+                   template="ETechFlow_AdminReindex::update-notice.phtml"
+                   before="-"
+                   cacheable="false"/>
+        </referenceContainer>
     </body>
 </page>

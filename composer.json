@@ -2,7 +2,7 @@
     "name": "etechflow/module-admin-reindex",
     "description": "Run Magento indexers from the admin browser instead of CLI. Adds a 'Reindex' mass action + 'Reindex All' button to System \u2192 Tools \u2192 Index Management. No SSH required. Hyv\u00e4 / Magento Open Source / Adobe Commerce compatible.",
     "type": "magento2-module",
-    "version": "1.2.0",
+    "version": "1.2.2",
     "license": "proprietary",
     "authors": [
         {
