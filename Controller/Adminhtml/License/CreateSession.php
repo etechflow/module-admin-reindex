@@ -11,7 +11,7 @@ use Magento\Framework\HTTP\Client\CurlFactory;
 use ETechFlow\AdminReindex\Model\LicenseValidator;
 
 /**
- * Opens a checkout via the eTechFlow webstore Paddle broker (module.etechflow.com)
+ * Opens a checkout via the eTechFlow webstore Stripe broker (module.etechflow.com)
  * and returns the hosted pay URL as JSON for the gate's AJAX. Replaces the prior
  * direct-Stripe call; the portal still issues the SP-XXXX key after payment.
  */

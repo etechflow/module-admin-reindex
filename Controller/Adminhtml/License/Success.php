@@ -13,9 +13,9 @@ use Magento\Framework\HTTP\Client\CurlFactory;
 use Magento\Framework\View\Result\PageFactory;
 
 /**
- * Landing page after payment. The buyer returns from the webstore Paddle
+ * Landing page after payment. The buyer returns from the webstore Stripe
  * checkout carrying the broker session id; we fetch the issued SP-XXXX key from
- * the broker (only returned once Paddle confirms payment) and save it to config.
+ * the broker (only returned once Stripe confirms payment) and save it to config.
  * Replaces the prior frontend Stripe callback that minted keys locally.
  */
 class Success extends Action
